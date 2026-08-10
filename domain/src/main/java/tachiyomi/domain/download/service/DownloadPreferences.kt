@@ -49,9 +49,9 @@ class DownloadPreferences(
         false,
     )
 
-    val parallelSourceLimit: Preference<Int> = preferenceStore.getInt("download_parallel_source_limit", 5)
-    val parallelChapterLimit: Preference<Int> = preferenceStore.getInt("download_parallel_chapter_limit", 2)
-    val parallelPageLimit: Preference<Int> = preferenceStore.getInt("download_parallel_page_limit", 5)
+    val parallelSourceLimit: Preference<Int> = preferenceStore.getInt("download_parallel_source_limit", 10)
+    val parallelChapterLimit: Preference<Int> = preferenceStore.getInt("download_parallel_chapter_limit", 3)
+    val parallelPageLimit: Preference<Int> = preferenceStore.getInt("download_parallel_page_limit", 6)
 
     companion object {
         private const val REMOVE_EXCLUDE_CATEGORIES_PREF_KEY = "remove_exclude_categories"
