@@ -1,35 +1,28 @@
 package eu.kanade.tachiyomi.network.interceptor
 
-import okhttp3.OkHttpClient
-import java.util.concurrent.TimeUnit
+import okhttp3.Interceptor
+import okhttp3.Response
+import okhttp3.Request
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.seconds
 
 /**
- * Rate limiting is disabled.
+ * No-op rate limit interceptor.
  *
- * This function is kept for compatibility with existing extensions.
- *
- * @param permits Ignored.
- * @param period Ignored.
- * @param unit Ignored.
+ * Kept for compatibility with SpecificHostRateLimitInterceptor
+ * and existing extensions. Rate limiting is disabled.
  */
-@Deprecated("Rate limiting is disabled.")
-fun OkHttpClient.Builder.rateLimit(
-    permits: Int,
-    period: Long = 1,
-    unit: TimeUnit = TimeUnit.SECONDS,
-) = this
+internal class RateLimitInterceptor(
+    private val host: String?,
+    private val permits: Int,
+    private val period: Duration,
+) : Interceptor {
 
-/**
- * Rate limiting is disabled.
- *
- * This function is kept for compatibility with existing extensions.
- *
- * @param permits Ignored.
- * @param period Ignored.
- */
-fun OkHttpClient.Builder.rateLimit(
-    permits: Int,
-    period: Duration = 1.seconds,
-) = this
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+
+        return when {
+            host == null || request.url.host == host -> chain.proceed(request)
+            else -> chain.proceed(request)
+        }
+    }
+}
