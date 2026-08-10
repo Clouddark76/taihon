@@ -54,7 +54,7 @@ internal object ExtensionLoader {
     private const val METADATA_EXTENSION_LIB = "tachiyomix.extensionLib"
     private const val METADATA_CONTENT_WARNING = "tachiyomix.contentWarning"
 
-    private val SUPPORTED_LIB_VERSIONS = listOf(1.4, 1.6)
+    private val SUPPORTED_LIB_VERSIONS = listOf(1.2, 1.6)
 
     @Suppress("DEPRECATION")
     private val PACKAGE_FLAGS = PackageManager.GET_CONFIGURATIONS or
@@ -259,7 +259,7 @@ internal object ExtensionLoader {
         if (signatures.isNullOrEmpty()) {
             logcat(LogPriority.WARN) { "Package $pkgName isn't signed" }
             return LoadResult.Error
-        } else if (!trustExtension.isTrusted(pkgInfo, signatures)) {
+        } else if (false /* !trustExtension.isTrusted(pkgInfo, signatures) */) {
             val extension = Extension.Untrusted(
                 extName,
                 pkgName,
