@@ -26,6 +26,10 @@ if (Config.includeTelemetry) {
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 
+val googleSyncImplementation by configurations.creating
+configurations.getByName("debugImplementation").extendsFrom(googleSyncImplementation)
+configurations.getByName("releaseImplementation").extendsFrom(googleSyncImplementation)
+
 android {
     namespace = "eu.kanade.tachiyomi"
 
@@ -76,6 +80,7 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-${getLatestCommitCount()}"
             isPseudoLocalesEnabled = true
+            buildConfigField("boolean", "GOOGLE_DRIVE_AVAILABLE", "true")
         }
         val release = getByName("release") {
             isMinifyEnabled = true
@@ -88,6 +93,7 @@ android {
             proguardFiles("proguard-android-optimize.txt", "proguard-rules.pro")
 
             buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLatestCommitTime = true)}\"")
+            buildConfigField("boolean", "GOOGLE_DRIVE_AVAILABLE", "true")
         }
 
         val commonMatchingFallbacks = listOf(release.name)
@@ -98,10 +104,21 @@ android {
             applicationIdSuffix = ".foss"
 
             matchingFallbacks.addAll(commonMatchingFallbacks)
+
+            buildConfigField("boolean", "GOOGLE_DRIVE_AVAILABLE", "false")
         }
     }
 
     sourceSets {
+        getByName("debug") {
+            kotlin.srcDir("src/google/kotlin")
+        }
+        getByName("release") {
+            kotlin.srcDir("src/google/kotlin")
+        }
+        getByName("foss") {
+            kotlin.srcDir("src/noop/kotlin")
+        }
     }
 
     splits {
@@ -134,6 +151,7 @@ android {
                 "META-INF/*.properties",
                 "META-INF/*.version",
                 "META-INF/DEPENDENCIES",
+                "META-INF/INDEX.LIST",
                 "META-INF/LICENSE",
                 "META-INF/NOTICE",
                 "META-INF/README.md",
@@ -305,6 +323,11 @@ dependencies {
     // For detecting memory leaks; see https://square.github.io/leakcanary/
     // debugImplementation(libs.leakCanary.android)
     implementation(libs.leakCanary.plumber)
+
+    googleSyncImplementation(libs.google.play.services.auth)
+    googleSyncImplementation(libs.google.api.client.android)
+    googleSyncImplementation(libs.google.api.client.gson)
+    googleSyncImplementation(libs.google.api.services.drive)
 
     testImplementation(libs.kotlinx.coroutines.test)
 }

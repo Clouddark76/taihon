@@ -52,7 +52,11 @@ class StorageManager(
     }
 
     fun getAutomaticBackupsDirectory(): UniFile? {
-        return baseDir?.createDirectory(AUTOMATIC_BACKUPS_PATH)
+        return if (baseDir?.name == AUTOMATIC_BACKUPS_PATH) {
+            baseDir
+        } else {
+            baseDir?.createDirectory(AUTOMATIC_BACKUPS_PATH)
+        }
     }
 
     fun getDownloadsDirectory(): UniFile? {
@@ -62,8 +66,11 @@ class StorageManager(
     fun getLocalSourceDirectory(): UniFile? {
         return baseDir?.createDirectory(LOCAL_SOURCE_PATH)
     }
+
+    companion object {
+        const val AUTOMATIC_BACKUPS_PATH = "autobackup"
+    }
 }
 
-private const val AUTOMATIC_BACKUPS_PATH = "autobackup"
 private const val DOWNLOADS_PATH = "downloads"
 private const val LOCAL_SOURCE_PATH = "local"

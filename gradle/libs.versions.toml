@@ -38,6 +38,9 @@ diskLruCache = "2.0.2"
 firebase-bom = "34.17.0"
 firebase-crashlytics = "3.0.7"
 flexibleAdapter = "c8013533"
+google-api-client = "2.7.2"
+google-api-services-drive = "v3-rev20241027-2.0.0"
+google-play-services-auth = "21.3.0"
 google-services = "4.5.0"
 image-decoder = "e03b81e18a"
 injekt = "91edab2317"
@@ -131,6 +134,10 @@ diskLruCache = { module = "com.jakewharton:disklrucache", version.ref = "diskLru
 firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebase-bom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+google-api-client-android = { module = "com.google.api-client:google-api-client-android", version.ref = "google-api-client" }
+google-api-client-gson = { module = "com.google.api-client:google-api-client-gson", version.ref = "google-api-client" }
+google-api-services-drive = { module = "com.google.apis:google-api-services-drive", version.ref = "google-api-services-drive" }
+google-play-services-auth = { module = "com.google.android.gms:play-services-auth", version.ref = "google-play-services-auth" }
 flexibleAdapter = { module = "com.github.arkon.FlexibleAdapter:flexible-adapter", version.ref = "flexibleAdapter" }
 image-decoder = { module = "com.github.mihonapp:image-decoder", version.ref = "image-decoder" }
 injekt = { module = "com.github.mihonapp:injekt", version.ref = "injekt" }

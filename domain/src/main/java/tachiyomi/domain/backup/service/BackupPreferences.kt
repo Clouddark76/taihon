@@ -14,4 +14,9 @@ class BackupPreferences(
         Preference.appStateKey("last_auto_backup_timestamp"),
         0L,
     )
+
+    val autoMirrorToCloud: Preference<Boolean> = preferenceStore.getBoolean("auto_mirror_to_cloud", false)
+    val cloudBackupEnabled: Preference<Boolean> = preferenceStore.getBoolean("cloud_backup_enabled", false)
+    val cloudStorageLocation: Preference<String> = preferenceStore.getString("cloud_storage_location", "")
+    val cloudStoragePath: Preference<String> = preferenceStore.getString("cloud_storage_path", "")
 }

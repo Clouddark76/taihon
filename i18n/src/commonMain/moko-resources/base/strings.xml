@@ -1087,4 +1087,16 @@
     <string name="migrationListScreen.migrateDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.progressDialog.cancelLabel">Cancel</string>
     <string name="migrationListScreen.matchWithoutChapterToast">No chapters found, this entry cannot be used for migration</string>
+
+    <!-- Cloud strings -->
+    <string name="cloud_backups_label">Cloud Backups</string>
+    <string name="pref_auto_mirror_to_cloud">Auto mirror to Google Drive</string>
+    <string name="pref_auto_mirror_to_cloud_summary">Automatically sync your automatic backups to
+        Google Drive
+    </string>
+    <string name="label_google_drive">Google Drive</string>
+    <string name="cloud_backup_not_supported">Google Drive is not available in FOSS builds.</string>
+    <string name="cloud_error_403">Permission denied (403): This app can only access files in Google
+        Drive that were created by the app.
+    </string>
 </resources>
