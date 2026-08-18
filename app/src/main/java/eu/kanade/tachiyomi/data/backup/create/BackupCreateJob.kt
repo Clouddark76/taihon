@@ -18,6 +18,7 @@ import androidx.work.workDataOf
 import com.hippo.unifile.UniFile
 import eu.kanade.tachiyomi.data.backup.BackupNotifier
 import eu.kanade.tachiyomi.data.backup.restore.BackupRestoreJob
+import eu.kanade.tachiyomi.data.cloud.mirror.CloudBackupMirrorWorker
 import eu.kanade.tachiyomi.data.notification.Notifications
 import eu.kanade.tachiyomi.util.system.cancelNotification
 import eu.kanade.tachiyomi.util.system.isRunning
@@ -55,6 +56,14 @@ class BackupCreateJob(private val context: Context, workerParams: WorkerParamete
             if (!isAutoBackup) {
                 notifier.showBackupComplete(UniFile.fromUri(context, location.toUri())!!)
             }
+
+            val backupPreferences = Injekt.get<BackupPreferences>()
+            val isFileInAutoDir = location.contains(StorageManager.AUTOMATIC_BACKUPS_PATH)
+
+            if (backupPreferences.autoMirrorToCloud.get() && isFileInAutoDir) {
+                CloudBackupMirrorWorker.schedule(context)
+            }
+
             Result.success()
         } catch (e: Exception) {
             logcat(LogPriority.ERROR, e)

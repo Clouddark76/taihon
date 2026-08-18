@@ -1,7 +1,6 @@
 package eu.kanade.presentation.more.settings.screen
 
 import android.content.ActivityNotFoundException
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.ManagedActivityResultLauncher
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -25,9 +25,11 @@ import androidx.compose.material3.MultiChoiceSegmentedButtonRow
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -44,8 +46,10 @@ import androidx.core.net.toUri
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import com.hippo.unifile.UniFile
+import dev.icerock.moko.resources.StringResource
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.screen.data.CreateBackupScreen
+import eu.kanade.presentation.more.settings.screen.data.GoogleDriveFilePickerScreen
 import eu.kanade.presentation.more.settings.screen.data.RestoreBackupScreen
 import eu.kanade.presentation.more.settings.screen.data.StorageInfo
 import eu.kanade.presentation.more.settings.widget.BasePreferenceWidget
@@ -55,6 +59,8 @@ import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.backup.create.BackupCreateJob
 import eu.kanade.tachiyomi.data.backup.restore.BackupRestoreJob
 import eu.kanade.tachiyomi.data.cache.ChapterCache
+import eu.kanade.tachiyomi.data.cloud.CloudBackupManager
+import eu.kanade.tachiyomi.data.cloud.mirror.CloudBackupMirrorWorker
 import eu.kanade.tachiyomi.data.export.LibraryExporter
 import eu.kanade.tachiyomi.data.export.LibraryExporter.ExportOptions
 import eu.kanade.tachiyomi.util.system.DeviceUtil
@@ -73,7 +79,6 @@ import tachiyomi.domain.manga.interactor.GetFavorites
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.storage.service.StoragePreferences
 import tachiyomi.i18n.MR
-import tachiyomi.presentation.core.components.material.TextButton
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
 import uy.kohesive.injekt.Injekt
@@ -105,11 +110,9 @@ object SettingsDataScreen : SearchableSettings {
         val storagePreferences = Injekt.get<StoragePreferences>()
 
         return listOf(
-            getStorageLocationPref(storagePreferences = storagePreferences),
-            Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.pref_storage_location_info)),
-
-            getBackupAndRestoreGroup(backupPreferences = backupPreferences),
-            getDataGroup(),
+            getStorageGroup(storagePreferences = storagePreferences),
+            getBackupGroup(backupPreferences = backupPreferences),
+            getCloudBackupGroup(backupPreferences = backupPreferences),
             getExportGroup(),
         )
     }
@@ -164,139 +167,11 @@ object SettingsDataScreen : SearchableSettings {
     }
 
     @Composable
-    private fun getStorageLocationPref(
-        storagePreferences: StoragePreferences,
-    ): Preference.PreferenceItem.TextPreference {
-        val context = LocalContext.current
-        val pickStorageLocation = storageLocationPicker(storagePreferences.baseStorageDirectory)
-
-        return Preference.PreferenceItem.TextPreference(
-            title = stringResource(MR.strings.pref_storage_location),
-            subtitle = storageLocationText(storagePreferences.baseStorageDirectory),
-            onClick = {
-                try {
-                    pickStorageLocation.launch(null)
-                } catch (e: ActivityNotFoundException) {
-                    context.toast(MR.strings.file_picker_error)
-                }
-            },
-        )
-    }
-
-    @Composable
-    private fun getBackupAndRestoreGroup(backupPreferences: BackupPreferences): Preference.PreferenceGroup {
-        val context = LocalContext.current
-        val navigator = LocalNavigator.currentOrThrow
-
-        val lastAutoBackup by backupPreferences.lastAutoBackupTimestamp.collectAsState()
-        val backupRetention by backupPreferences.backupRetention.collectAsState()
-        val backupInterval by backupPreferences.backupInterval.collectAsState()
-
-        val chooseBackup = rememberLauncherForActivityResult(
-            object : ActivityResultContracts.GetContent() {
-                override fun createIntent(context: Context, input: String): Intent {
-                    val intent = super.createIntent(context, input)
-                    return Intent.createChooser(intent, context.stringResource(MR.strings.file_select_backup))
-                }
-            },
-        ) {
-            if (it == null) {
-                context.toast(MR.strings.file_null_uri_error)
-                return@rememberLauncherForActivityResult
-            }
-
-            navigator.push(RestoreBackupScreen(it.toString()))
-        }
-
-        return Preference.PreferenceGroup(
-            title = stringResource(MR.strings.label_backup),
-            preferenceItems = listOf(
-                // Manual actions
-                Preference.PreferenceItem.CustomPreference(
-                    title = stringResource(restorePreferenceKeyString),
-                ) {
-                    BasePreferenceWidget(
-                        subcomponent = {
-                            MultiChoiceSegmentedButtonRow(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(intrinsicSize = IntrinsicSize.Min)
-                                    .padding(horizontal = PrefsHorizontalPadding),
-                            ) {
-                                SegmentedButton(
-                                    modifier = Modifier.fillMaxHeight(),
-                                    checked = false,
-                                    onCheckedChange = { navigator.push(CreateBackupScreen()) },
-                                    shape = SegmentedButtonDefaults.itemShape(0, 2),
-                                ) {
-                                    Text(stringResource(MR.strings.pref_create_backup))
-                                }
-                                SegmentedButton(
-                                    modifier = Modifier.fillMaxHeight(),
-                                    checked = false,
-                                    onCheckedChange = {
-                                        if (!BackupRestoreJob.isRunning(context)) {
-                                            if (DeviceUtil.isMiui && DeviceUtil.isMiuiOptimizationDisabled()) {
-                                                context.toast(MR.strings.restore_miui_warning)
-                                            }
-
-                                            // no need to catch because it's wrapped with a chooser
-                                            chooseBackup.launch("*/*")
-                                        } else {
-                                            context.toast(MR.strings.restore_in_progress)
-                                        }
-                                    },
-                                    shape = SegmentedButtonDefaults.itemShape(1, 2),
-                                ) {
-                                    Text(stringResource(MR.strings.pref_restore_backup))
-                                }
-                            }
-                        },
-                    )
-                },
-
-                // Automatic backups
-                Preference.PreferenceItem.ListPreference(
-                    preference = backupPreferences.backupInterval,
-                    entries = mapOf(
-                        0 to stringResource(MR.strings.off),
-                        3 to stringResource(MR.strings.update_6hour).replace("6", "3"),
-                        6 to stringResource(MR.strings.update_6hour),
-                        12 to stringResource(MR.strings.update_12hour),
-                        24 to stringResource(MR.strings.update_24hour),
-                        48 to stringResource(MR.strings.update_48hour),
-                        168 to stringResource(MR.strings.update_weekly),
-                    ),
-                    title = stringResource(MR.strings.pref_backup_interval),
-                    onValueChanged = {
-                        BackupCreateJob.setupTask(context, it)
-                        true
-                    },
-                    badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                ),
-                Preference.PreferenceItem.SliderPreference(
-                    value = backupRetention,
-                    valueRange = 4..100,
-                    title = stringResource(MR.strings.pref_backup_retention),
-                    subtitle = stringResource(MR.strings.pref_backup_retention_info),
-                    onValueChanged = { backupPreferences.backupRetention.set(it) },
-                    badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                    steps = 0,
-                    enabled = backupInterval > 0,
-                ),
-                Preference.PreferenceItem.InfoPreference(
-                    stringResource(MR.strings.backup_info) + "\n\n" +
-                        stringResource(MR.strings.last_auto_backup_info, relativeTimeSpanString(lastAutoBackup)),
-                ),
-            ),
-        )
-    }
-
-    @Composable
-    private fun getDataGroup(): Preference.PreferenceGroup {
+    private fun getStorageGroup(storagePreferences: StoragePreferences): Preference.PreferenceGroup {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
         val libraryPreferences = remember { Injekt.get<LibraryPreferences>() }
+        val pickStorageLocation = storageLocationPicker(storagePreferences.baseStorageDirectory)
 
         val chapterCache = remember { Injekt.get<ChapterCache>() }
         var cacheReadableSizeSema by remember { mutableIntStateOf(0) }
@@ -316,7 +191,18 @@ object SettingsDataScreen : SearchableSettings {
                         },
                     )
                 },
-
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.pref_storage_location),
+                    subtitle = storageLocationText(storagePreferences.baseStorageDirectory),
+                    onClick = {
+                        try {
+                            pickStorageLocation.launch(null)
+                        } catch (_: ActivityNotFoundException) {
+                            context.toast(MR.strings.file_picker_error)
+                        }
+                    },
+                ),
+                Preference.PreferenceItem.InfoPreference(stringResource(MR.strings.pref_storage_location_info)),
                 Preference.PreferenceItem.TextPreference(
                     title = stringResource(MR.strings.pref_clear_chapter_cache),
                     subtitle = stringResource(MR.strings.used_cache, cacheReadableSize),
@@ -341,6 +227,261 @@ object SettingsDataScreen : SearchableSettings {
                 ),
             ),
         )
+    }
+
+    @Composable
+    private fun getBackupGroup(backupPreferences: BackupPreferences): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val navigator = LocalNavigator.currentOrThrow
+
+        val lastAutoBackup by backupPreferences.lastAutoBackupTimestamp.collectAsState()
+        val backupRetention by backupPreferences.backupRetention.collectAsState()
+        val backupInterval by backupPreferences.backupInterval.collectAsState()
+
+        val chooseBackup = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.OpenDocument(),
+        ) {
+            if (it == null) {
+                context.toast(MR.strings.file_null_uri_error)
+                return@rememberLauncherForActivityResult
+            }
+
+            navigator.push(RestoreBackupScreen(it.toString()))
+        }
+
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.label_backup),
+            preferenceItems = listOf(
+                // Manual actions
+                getBackupActionPreference(
+                    titleRes = restorePreferenceKeyString,
+                    onCreateClick = { navigator.push(CreateBackupScreen()) },
+                    onRestoreClick = {
+                        if (!BackupRestoreJob.isRunning(context)) {
+                            if (DeviceUtil.isMiui && DeviceUtil.isMiuiOptimizationDisabled()) {
+                                context.toast(MR.strings.restore_miui_warning)
+                            }
+                            chooseBackup.launch(arrayOf("*/*"))
+                        } else {
+                            context.toast(MR.strings.restore_in_progress)
+                        }
+                    },
+                ),
+
+                // Automatic backups
+                Preference.PreferenceItem.ListPreference(
+                    preference = backupPreferences.backupInterval,
+                    entries = mapOf(
+                        0 to stringResource(MR.strings.off),
+                        3 to stringResource(MR.strings.update_6hour).replace("6", "3"),
+                        6 to stringResource(MR.strings.update_6hour),
+                        12 to stringResource(MR.strings.update_12hour),
+                        24 to stringResource(MR.strings.update_24hour),
+                        48 to stringResource(MR.strings.update_48hour),
+                        168 to stringResource(MR.strings.update_weekly),
+                    ),
+                    title = stringResource(MR.strings.pref_backup_interval),
+                    onValueChanged = {
+                        BackupCreateJob.setupTask(context, it)
+                        true
+                    },
+                ),
+                Preference.PreferenceItem.SliderPreference(
+                    value = backupRetention,
+                    valueRange = 4..100,
+                    title = stringResource(MR.strings.pref_backup_retention),
+                    subtitle = stringResource(MR.strings.pref_backup_retention_info),
+                    onValueChanged = { backupPreferences.backupRetention.set(it) },
+                    badge = ImageVector.vectorResource(R.drawable.ic_taihon),
+                    steps = 0,
+                    enabled = backupInterval > 0,
+                ),
+                Preference.PreferenceItem.InfoPreference(
+                    stringResource(MR.strings.backup_info) + "\n\n" +
+                        stringResource(MR.strings.last_auto_backup_info, relativeTimeSpanString(lastAutoBackup)),
+                ),
+            ),
+        )
+    }
+
+    @Composable
+    private fun getCloudBackupGroup(
+        backupPreferences: BackupPreferences,
+    ): Preference.PreferenceGroup {
+        val context = LocalContext.current
+        val navigator = LocalNavigator.currentOrThrow
+
+        val cloudBackupManager = remember { Injekt.get<CloudBackupManager>() }
+        val account by cloudBackupManager.accountState.collectAsState()
+
+        val loginLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.StartActivityForResult(),
+        ) {
+            cloudBackupManager.updateAccount()
+            if (cloudBackupManager.accountState.value != null) {
+                backupPreferences.cloudBackupEnabled.set(true)
+            }
+        }
+
+        val cloudLocationId by backupPreferences.cloudStorageLocation.collectAsState()
+        val cloudPath by backupPreferences.cloudStoragePath.collectAsState()
+        val isCloudEnabled by backupPreferences.cloudBackupEnabled.collectAsState()
+
+        val cloudItems = mutableListOf<Preference.PreferenceItem<out Any, out Any>>()
+
+        if (!cloudBackupManager.isAvailable()) {
+            cloudItems.add(
+                Preference.PreferenceItem.TextPreference(
+                    title = stringResource(MR.strings.label_google_drive),
+                    subtitle = stringResource(MR.strings.cloud_backup_not_supported),
+                    onClick = { context.toast(MR.strings.cloud_backup_not_supported) },
+                    icon = Icons.Outlined.Cloud,
+                ),
+            )
+        } else {
+            cloudItems.add(
+                Preference.PreferenceItem.SwitchPreference(
+                    preference = backupPreferences.cloudBackupEnabled,
+                    title = if (account != null) {
+                        stringResource(MR.strings.label_google_drive)
+                    } else {
+                        stringResource(MR.strings.login_title, stringResource(MR.strings.label_google_drive))
+                    },
+                    subtitle = if (account != null) {
+                        context.stringResource(MR.strings.login_success) + ": ${account!!.email}"
+                    } else {
+                        stringResource(MR.strings.login)
+                    },
+                    icon = Icons.Outlined.Cloud,
+                    onValueChanged = { enabled ->
+                        if (enabled && account == null) {
+                            try {
+                                loginLauncher.launch(cloudBackupManager.getSignInIntent())
+                            } catch (e: Exception) {
+                                context.toast(e.message)
+                            }
+                            false
+                        } else if (!enabled && account != null) {
+                            cloudBackupManager.signOut()
+                            true
+                        } else {
+                            true
+                        }
+                    },
+                ),
+            )
+
+            if (isCloudEnabled && account != null) {
+                cloudItems.add(
+                    Preference.PreferenceItem.SwitchPreference(
+                        preference = backupPreferences.autoMirrorToCloud,
+                        title = stringResource(MR.strings.pref_auto_mirror_to_cloud),
+                        subtitle = stringResource(MR.strings.pref_auto_mirror_to_cloud_summary),
+                        onValueChanged = { enabled ->
+                            if (enabled && cloudLocationId.isEmpty()) {
+                                context.toast(MR.strings.no_location_set)
+                                false
+                            } else {
+                                if (enabled) {
+                                    CloudBackupMirrorWorker.schedule(context)
+                                }
+                                true
+                            }
+                        },
+                    ),
+                )
+                cloudItems.add(
+                    Preference.PreferenceItem.TextPreference(
+                        title = stringResource(MR.strings.pref_storage_location),
+                        subtitle = if (cloudPath.isEmpty()) {
+                            stringResource(MR.strings.no_location_set)
+                        } else {
+                            val rootLabel = context.stringResource(MR.strings.label_google_drive)
+                            "$rootLabel/$cloudPath"
+                        },
+                        onClick = {
+                            navigator.push(
+                                GoogleDriveFilePickerScreen(
+                                    parentId = cloudLocationId.takeIf { it.isNotEmpty() },
+                                    relativePath = cloudPath.takeIf { it.isNotEmpty() },
+                                    mode = GoogleDriveFilePickerScreen.Mode.PICK_FOLDER,
+                                ),
+                            )
+                        },
+                    ),
+                )
+                cloudItems.add(
+                    getBackupActionPreference(
+                        titleRes = MR.strings.label_backup,
+                        onCreateClick = {
+                            if (cloudLocationId.isEmpty()) {
+                                context.toast(MR.strings.no_location_set)
+                                return@getBackupActionPreference
+                            }
+                            navigator.push(CreateBackupScreen(isCloud = true))
+                        },
+                        onRestoreClick = {
+                            if (cloudLocationId.isEmpty()) {
+                                context.toast(MR.strings.no_location_set)
+                                return@getBackupActionPreference
+                            }
+                            navigator.push(
+                                GoogleDriveFilePickerScreen(
+                                    parentId = cloudLocationId.takeIf { it.isNotEmpty() },
+                                    relativePath = cloudPath.takeIf { it.isNotEmpty() },
+                                    mode = GoogleDriveFilePickerScreen.Mode.PICK_FILE,
+                                ),
+                            )
+                        },
+                    ),
+                )
+            }
+        }
+
+        return Preference.PreferenceGroup(
+            title = stringResource(MR.strings.cloud_backups_label),
+            badge = ImageVector.vectorResource(R.drawable.ic_taihon),
+            preferenceItems = cloudItems,
+        )
+    }
+
+    @Composable
+    private fun getBackupActionPreference(
+        titleRes: StringResource,
+        onCreateClick: () -> Unit,
+        onRestoreClick: () -> Unit,
+    ): Preference.PreferenceItem.CustomPreference {
+        return Preference.PreferenceItem.CustomPreference(
+            title = stringResource(titleRes),
+        ) {
+            BasePreferenceWidget(
+                subcomponent = {
+                    MultiChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(intrinsicSize = IntrinsicSize.Min)
+                            .padding(horizontal = PrefsHorizontalPadding),
+                    ) {
+                        SegmentedButton(
+                            modifier = Modifier.fillMaxHeight(),
+                            checked = false,
+                            onCheckedChange = { onCreateClick() },
+                            shape = SegmentedButtonDefaults.itemShape(0, 2),
+                        ) {
+                            Text(stringResource(MR.strings.pref_create_backup))
+                        }
+                        SegmentedButton(
+                            modifier = Modifier.fillMaxHeight(),
+                            checked = false,
+                            onCheckedChange = { onRestoreClick() },
+                            shape = SegmentedButtonDefaults.itemShape(1, 2),
+                        ) {
+                            Text(stringResource(MR.strings.pref_restore_backup))
+                        }
+                    }
+                },
+            )
+        }
     }
 
     @Composable

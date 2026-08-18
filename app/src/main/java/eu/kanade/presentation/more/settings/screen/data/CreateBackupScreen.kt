@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -24,14 +25,17 @@ import eu.kanade.tachiyomi.util.system.DeviceUtil
 import eu.kanade.tachiyomi.util.system.toast
 import kotlinx.coroutines.flow.update
 import mihon.core.viewmodel.StateViewModel
+import tachiyomi.domain.backup.service.BackupPreferences
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.LabeledCheckbox
 import tachiyomi.presentation.core.components.LazyColumnWithAction
 import tachiyomi.presentation.core.components.SectionCard
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
+import uy.kohesive.injekt.Injekt
+import uy.kohesive.injekt.api.get
 
-class CreateBackupScreen : Screen() {
+class CreateBackupScreen(private val isCloud: Boolean = false) : Screen() {
 
     @Composable
     override fun Content() {
@@ -39,6 +43,7 @@ class CreateBackupScreen : Screen() {
         val navigator = LocalNavigator.currentOrThrow
         val viewModel = viewModel<CreateBackupViewModel>()
         val state by viewModel.state.collectAsState()
+        val backupPreferences = remember { Injekt.get<BackupPreferences>() }
 
         val chooseBackupDir = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.CreateDocument("application/*"),
@@ -68,14 +73,27 @@ class CreateBackupScreen : Screen() {
                 actionLabel = stringResource(MR.strings.action_create),
                 actionEnabled = state.options.canCreate(),
                 onClickAction = {
-                    if (!BackupCreateJob.isManualJobRunning(context)) {
-                        try {
-                            chooseBackupDir.launch(BackupCreator.getFilename())
-                        } catch (e: ActivityNotFoundException) {
-                            context.toast(MR.strings.file_picker_error)
-                        }
+                    if (isCloud) {
+                        val cloudLocationId = backupPreferences.cloudStorageLocation.get()
+                        val cloudPath = backupPreferences.cloudStoragePath.get()
+                        navigator.push(
+                            GoogleDriveFilePickerScreen(
+                                parentId = cloudLocationId.takeIf { it.isNotEmpty() },
+                                relativePath = cloudPath.takeIf { it.isNotEmpty() },
+                                mode = GoogleDriveFilePickerScreen.Mode.SAVE_FILE,
+                                backupOptions = state.options,
+                            ),
+                        )
                     } else {
-                        context.toast(MR.strings.backup_in_progress)
+                        if (!BackupCreateJob.isManualJobRunning(context)) {
+                            try {
+                                chooseBackupDir.launch(BackupCreator.getFilename())
+                            } catch (e: ActivityNotFoundException) {
+                                context.toast(MR.strings.file_picker_error)
+                            }
+                        } else {
+                            context.toast(MR.strings.backup_in_progress)
+                        }
                     }
                 },
             ) {
