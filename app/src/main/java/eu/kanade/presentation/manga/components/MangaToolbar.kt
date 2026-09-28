@@ -61,13 +61,7 @@ fun MangaToolbar(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .then(
-                            if (onClickTitle != null) {
-                                Modifier.clickableNoIndication(onClick = onClickTitle)
-                            } else {
-                                Modifier
-                            },
-                        ),
+                        .clickableNoIndication { onClickTitle?.invoke() },
                 ) {
                     AppBarTitle(
                         title = title,

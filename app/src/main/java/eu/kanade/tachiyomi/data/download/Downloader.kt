@@ -54,6 +54,7 @@ import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.domain.track.interactor.GetTracks
 import tachiyomi.i18n.MR
+import taihon.domain.preferences.TaihonPreferences
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 import java.io.File
@@ -72,6 +73,7 @@ class Downloader(
     private val sourceManager: SourceManager = Injekt.get(),
     private val chapterCache: ChapterCache = Injekt.get(),
     private val downloadPreferences: DownloadPreferences = Injekt.get(),
+    private val taihonPreferences: TaihonPreferences = Injekt.get(),
     private val xml: XML = Injekt.get(),
     private val getCategories: GetCategories = Injekt.get(),
     private val getTracks: GetTracks = Injekt.get(),
@@ -192,20 +194,18 @@ class Downloader(
             val activeDownloadsFlow = combine(
                 queueState,
                 downloadPreferences.parallelSourceLimit.changes(),
-                downloadPreferences.parallelChapterLimit.changes(),
+                taihonPreferences.parallelChapterLimit.changes(),
             ) { queue, sourceLimit, chapterLimit ->
                 Triple(queue, sourceLimit, chapterLimit)
-            }.transformLatest { (queue, sourceLimit, chapterLimit) ->
+            }.transformLatest { (queue, parallelCount, chapterLimit) ->
                 while (true) {
                     val activeDownloads = queue.asSequence()
                         // Ignore completed downloads, leave them in the queue
                         .filter { it.status.value <= Download.State.DOWNLOADING.value }
                         .groupBy { it.source }
                         .toList()
-                        .take(sourceLimit)
-                        .flatMap { (_, downloads) ->
-                            downloads.take(chapterLimit)
-                        }
+                        .take(parallelCount)
+                        .flatMap { (_, downloads) -> downloads.take(chapterLimit) }
                         .toList()
                     emit(activeDownloads)
 
@@ -350,6 +350,7 @@ class Downloader(
             download.chapter.url,
         )
         val tmpDir = mangaDir.createDirectory(chapterDirname + TMP_DIR_SUFFIX)!!
+        DiskUtil.createNoMediaFile(tmpDir, context)
 
         try {
             // If the page list already exists, start from the file
@@ -413,8 +414,6 @@ class Downloader(
             }
             cache.addChapter(chapterDirname, mangaDir, download.manga)
 
-            DiskUtil.createNoMediaFile(tmpDir, context)
-
             download.status = Download.State.DOWNLOADED
         } catch (error: Throwable) {
             if (error is CancellationException) throw error
@@ -457,7 +456,7 @@ class Downloader(
             }
 
             // When the page is ready, set page path, progress (just in case) and status
-            splitTallImageIfNeeded(page, tmpDir)
+            splitTallImageIfNeeded(page, tmpDir, file)
 
             page.uri = file.uri
             page.progress = 100
@@ -551,20 +550,16 @@ class Downloader(
         return ImageUtil.getExtensionFromMimeType(mime) { file.openInputStream() }
     }
 
-    private fun splitTallImageIfNeeded(page: Page, tmpDir: UniFile) {
+    private fun splitTallImageIfNeeded(page: Page, tmpDir: UniFile, imageFile: UniFile) {
         if (!downloadPreferences.splitTallImages.get()) return
 
         try {
-            val filenamePrefix = "%03d".format(Locale.ENGLISH, page.number)
-            val imageFile = tmpDir.listFiles()?.firstOrNull { it.name.orEmpty().startsWith(filenamePrefix) }
-                ?: error(context.stringResource(MR.strings.download_notifier_split_page_not_found, page.number))
-
-            // If the original page was previously split, then skip
-            if (imageFile.name.orEmpty().startsWith("${filenamePrefix}__")) return
+            val filenamePrefix = imageFile.name.orEmpty().substringBeforeLast(".")
+            if ("__" in filenamePrefix) return
 
             ImageUtil.splitTallImage(tmpDir, imageFile, filenamePrefix)
         } catch (e: Exception) {
-            logcat(LogPriority.ERROR, e) { "Failed to split downloaded image" }
+            logcat(LogPriority.ERROR, e) { "Failed to split downloaded image for page ${page.number}" }
         }
     }
 

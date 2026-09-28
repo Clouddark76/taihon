@@ -24,6 +24,10 @@ if (Config.includeTelemetry) {
     }
 }
 
+if (Config.includeCloud) {
+    pluginManager.apply(libs.plugins.google.services.get().pluginId)
+}
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 
 android {
@@ -39,6 +43,7 @@ android {
         buildConfigField("String", "COMMIT_SHA", "\"${getLatestCommitSha()}\"")
         buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLatestCommitTime = false)}\"")
         buildConfigField("boolean", "TELEMETRY_INCLUDED", "${Config.includeTelemetry}")
+        buildConfigField("boolean", "CLOUD_INCLUDED", "${Config.includeCloud}")
         buildConfigField("boolean", "UPDATER_ENABLED", "${Config.enableUpdater}")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -73,7 +78,7 @@ android {
 
     buildTypes {
         val debug = getByName("debug") {
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = ".dev"
             versionNameSuffix = "-${getLatestCommitCount()}"
             isPseudoLocalesEnabled = true
         }
@@ -99,9 +104,30 @@ android {
 
             matchingFallbacks.addAll(commonMatchingFallbacks)
         }
+        create("preview") {
+            initWith(release)
+
+            applicationIdSuffix = ".debug"
+
+            versionNameSuffix = debug.versionNameSuffix
+
+            matchingFallbacks.addAll(commonMatchingFallbacks)
+
+            buildConfigField("String", "BUILD_TIME", "\"${getBuildTime(useLatestCommitTime = false)}\"")
+        }
+        create("benchmark") {
+            initWith(release)
+
+            versionNameSuffix = "-benchmark"
+            applicationIdSuffix = ".benchmark"
+
+            matchingFallbacks.addAll(commonMatchingFallbacks)
+        }
     }
 
     sourceSets {
+        getByName("preview").res.directories.add("src/debug/res")
+        getByName("benchmark").res.directories.add("src/debug/res")
     }
 
     splits {
@@ -133,6 +159,7 @@ android {
                 "META-INF/**/LICENSE.txt",
                 "META-INF/*.properties",
                 "META-INF/*.version",
+                "META-INF/INDEX.LIST",
                 "META-INF/DEPENDENCIES",
                 "META-INF/LICENSE",
                 "META-INF/NOTICE",
@@ -197,6 +224,7 @@ dependencies {
     implementation(projects.presentationCore)
     implementation(projects.presentationWidget)
     implementation(projects.telemetry)
+    implementation(projects.cloudFeature)
 
     // Compose
     implementation(libs.androidx.activity.compose)

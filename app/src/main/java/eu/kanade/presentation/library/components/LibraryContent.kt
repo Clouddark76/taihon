@@ -15,13 +15,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalViewConfiguration
 import eu.kanade.core.preference.PreferenceMutableState
 import eu.kanade.tachiyomi.ui.library.LibraryItem
 import kotlinx.coroutines.delay
@@ -30,6 +24,7 @@ import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.library.model.LibraryDisplayMode
 import tachiyomi.domain.library.model.LibraryManga
 import tachiyomi.presentation.core.components.material.PullRefresh
+import taihon.feature.library.ui.TaihonLibraryHooks
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
@@ -64,7 +59,6 @@ fun LibraryContent(
         val pagerState = rememberPagerState(currentPage) { categories.size }
 
         val scope = rememberCoroutineScope()
-        val viewConfiguration = LocalViewConfiguration.current
         var isRefreshing by remember(pagerState.currentPage) { mutableStateOf(false) }
 
         val currentSearchQuery by rememberUpdatedState(searchQuery)
@@ -75,18 +69,11 @@ fun LibraryContent(
                 }
             }
             LibraryTabs(
-                modifier = Modifier.pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (currentSearchQuery == "" &&
-                                (event.type == PointerEventType.Press || event.type == PointerEventType.Scroll)
-                            ) {
-                                onDismissSearch()
-                            }
-                        }
-                    }
-                },
+                modifier = TaihonLibraryHooks.taihonLibrarySearchDismiss(
+                    modifier = Modifier,
+                    enabled = currentSearchQuery == "",
+                    onDismissSearch = onDismissSearch,
+                ),
                 categories = categories,
                 pagerState = pagerState,
                 getItemCountForCategory = getItemCountForCategory,
@@ -100,39 +87,11 @@ fun LibraryContent(
         }
 
         PullRefresh(
-            modifier = Modifier
-                .weight(1f)
-                .pointerInput(Unit) {
-                    awaitPointerEventScope {
-                        while (true) {
-                            val event = awaitPointerEvent(PointerEventPass.Initial)
-                            if (currentSearchQuery == "") {
-                                if (event.type == PointerEventType.Press) {
-                                    onDismissSearch()
-
-                                    var totalMovement = Offset.Zero
-                                    var isSwipe = false
-                                    do {
-                                        val nextEvent = awaitPointerEvent(PointerEventPass.Initial)
-                                        if (nextEvent.type == PointerEventType.Move) {
-                                            totalMovement += nextEvent.changes.first().positionChange()
-                                            if (totalMovement.getDistance() > viewConfiguration.touchSlop) {
-                                                isSwipe = true
-                                            }
-                                        } else if (nextEvent.type == PointerEventType.Release) {
-                                            if (!isSwipe) {
-                                                nextEvent.changes.forEach { it.consume() }
-                                            }
-                                            break
-                                        }
-                                    } while (nextEvent.changes.any { it.pressed })
-                                } else if (event.type == PointerEventType.Scroll) {
-                                    onDismissSearch()
-                                }
-                            }
-                        }
-                    }
-                },
+            modifier = TaihonLibraryHooks.taihonLibrarySearchDismissDetailed(
+                modifier = Modifier.weight(1f),
+                enabled = currentSearchQuery == "",
+                onDismissSearch = onDismissSearch,
+            ),
             refreshing = isRefreshing,
             enabled = selection.isEmpty(),
             onRefresh = {

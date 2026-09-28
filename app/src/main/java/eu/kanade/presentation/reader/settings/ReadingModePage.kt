@@ -8,11 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import eu.kanade.domain.manga.model.readerOrientation
 import eu.kanade.domain.manga.model.readingMode
-import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
@@ -25,6 +22,7 @@ import tachiyomi.presentation.core.components.SettingsChipRow
 import tachiyomi.presentation.core.components.SliderItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
+import taihon.feature.ui.components.taihonBadge
 import java.text.NumberFormat
 
 @Composable
@@ -157,14 +155,14 @@ private fun ColumnScope.WebtoonViewerSettings(viewModel: ReaderSettingsViewModel
     val webtoonSidePadding by viewModel.preferences.webtoonSidePadding.collectAsState()
     SliderItem(
         value = webtoonSidePadding,
-        valueRange = ReaderPreferences.let { it.WEBTOON_PADDING_MIN..it.WEBTOON_PADDING_MAX },
+        valueRange = ReaderPreferences.WEBTOON_PADDING_MIN..ReaderPreferences.WEBTOON_PADDING_MAX,
         label = stringResource(MR.strings.pref_webtoon_side_padding),
         valueString = numberFormat.format(webtoonSidePadding / 100f),
         onChange = {
             viewModel.preferences.webtoonSidePadding.set(it)
         },
         pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        badge = ImageVector.vectorResource(R.drawable.ic_taihon),
+        badge = taihonBadge(),
     )
 
     CheckboxItem(

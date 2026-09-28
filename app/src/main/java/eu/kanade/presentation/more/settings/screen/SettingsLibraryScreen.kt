@@ -9,9 +9,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.util.fastMap
 import androidx.core.content.ContextCompat
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -20,7 +18,6 @@ import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.presentation.category.visualName
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.widget.TriStateListDialog
-import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.data.library.LibraryUpdateJob
 import eu.kanade.tachiyomi.ui.category.CategoryScreen
 import kotlinx.coroutines.launch
@@ -41,6 +38,7 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
+import taihon.feature.settings.getTaihonLibraryBehaviorItems
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -53,7 +51,7 @@ object SettingsLibraryScreen : SearchableSettings {
     @Composable
     override fun getPreferences(): List<Preference> {
         val getCategories = remember { Injekt.get<GetCategories>() }
-        val libraryPreferences = remember { Injekt.get<LibraryPreferences>() }
+        val libraryPreferences = Injekt.get<LibraryPreferences>()
         val allCategories by getCategories.subscribe().collectAsState(initial = emptyList())
 
         return listOf(
@@ -260,13 +258,7 @@ object SettingsLibraryScreen : SearchableSettings {
                     preference = libraryPreferences.hideMissingChapters,
                     title = stringResource(MR.strings.pref_hide_missing_chapter_indicators),
                 ),
-                Preference.PreferenceItem.SwitchPreference(
-                    preference = libraryPreferences.resumeLastSeenPage,
-                    title = stringResource(MR.strings.pref_resume_last_seen_page),
-                    subtitle = stringResource(MR.strings.pref_resume_last_seen_page_summary),
-                    badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                ),
-            ),
+            ) + getTaihonLibraryBehaviorItems(),
         )
     }
 }

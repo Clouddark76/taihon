@@ -1,6 +1,5 @@
 package eu.kanade.presentation.manga.components
 
-import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -53,6 +52,8 @@ import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.material.Scaffold
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.clickableNoIndication
+import taihon.feature.manga.applyTaihonHardwareBitmapPreference
+import taihon.feature.manga.getTaihonHardwareBitmapConfig
 
 @Composable
 fun MangaCoverDialog(
@@ -169,13 +170,15 @@ fun MangaCoverDialog(
                             .data(manga)
                             .size(Size.ORIGINAL)
                             .memoryCachePolicy(CachePolicy.DISABLED)
+                            .applyTaihonHardwareBitmapPreference()
                             .target { image ->
                                 val drawable = image.asDrawable(view.context.resources)
                                 // Copy bitmap in case it came from memory cache
                                 // Because SSIV needs to thoroughly read the image
+                                val config = getTaihonHardwareBitmapConfig()
                                 val copy = (drawable as? BitmapDrawable)
                                     ?.bitmap
-                                    ?.copy(Bitmap.Config.HARDWARE, false)
+                                    ?.copy(config, false)
                                     ?.toDrawable(view.context.resources)
                                     ?: drawable
                                 view.setImage(copy, ReaderPageImageView.Config(zoomDuration = 500))

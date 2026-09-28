@@ -25,6 +25,7 @@ import tachiyomi.domain.download.service.DownloadPreferences
 import tachiyomi.domain.manga.model.Manga
 import tachiyomi.domain.source.service.SourceManager
 import tachiyomi.i18n.MR
+import taihon.feature.data.sortedByTaihonName
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -167,7 +168,7 @@ class DownloadManager(
             throw Exception(context.stringResource(MR.strings.page_list_empty_error))
         }
 
-        return files.sortedBy { it.name }
+        return files.sortedByTaihonName()
             .mapIndexed { i, file ->
                 Page(i, uri = file.uri).apply { status = Page.State.Ready }
             }

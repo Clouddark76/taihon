@@ -5,24 +5,21 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.vectorResource
 import androidx.fragment.app.FragmentActivity
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
 import eu.kanade.domain.source.service.SourcePreferences
 import eu.kanade.presentation.more.settings.Preference
 import eu.kanade.presentation.more.settings.screen.browse.ExtensionStoresScreen
-import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.extension.ExtensionManager
 import eu.kanade.tachiyomi.util.system.AuthenticatorUtil.authenticate
 import mihon.domain.extension.interactor.GetExtensionStoreCountAsFlow
 import tachiyomi.core.common.i18n.stringResource
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.i18n.pluralStringResource
 import tachiyomi.presentation.core.i18n.stringResource
-import tachiyomi.presentation.core.util.collectAsState
+import taihon.feature.settings.getTaihonBrowseGroups
+import taihon.feature.settings.getTaihonExtensionItems
 import uy.kohesive.injekt.Injekt
 import uy.kohesive.injekt.api.get
 
@@ -38,12 +35,9 @@ object SettingsBrowseScreen : SearchableSettings {
         val navigator = LocalNavigator.currentOrThrow
 
         val sourcePreferences = remember { Injekt.get<SourcePreferences>() }
-        val extensionManager = remember { Injekt.get<ExtensionManager>() }
         val getExtensionStoreCountAsFlow = remember { Injekt.get<GetExtensionStoreCountAsFlow>() }
 
         val reposCount by getExtensionStoreCountAsFlow().collectAsState(0)
-        val installedExtensions by extensionManager.installedExtensionsFlow.collectAsState()
-        val smartApostropheNormalization by sourcePreferences.smartApostropheNormalization.collectAsState()
 
         return listOf(
             Preference.PreferenceGroup(
@@ -83,39 +77,9 @@ object SettingsBrowseScreen : SearchableSettings {
                             navigator.push(ExtensionStoresScreen())
                         },
                     ),
-                    Preference.PreferenceItem.SwitchPreference(
-                        preference = sourcePreferences.hideExtensionUpdatesCount,
-                        title = stringResource(MR.strings.pref_extension_update_hide_browse_badge),
-                        badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                    ),
-                ),
+                ) + getTaihonExtensionItems(),
             ),
 
-            Preference.PreferenceGroup(
-                title = stringResource(MR.strings.action_global_search),
-                preferenceItems = listOf(
-                    Preference.PreferenceItem.SwitchPreference(
-                        preference = sourcePreferences.smartApostropheNormalization,
-                        title = stringResource(MR.strings.pref_smart_apostrophe_normalization),
-                        subtitle = stringResource(MR.strings.pref_smart_apostrophe_normalization_summary),
-                        badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                    ),
-                    Preference.PreferenceItem.MultiSelectListPreference(
-                        preference = sourcePreferences.smartApostropheNormalizationExceptions,
-                        entries = installedExtensions.associate { it.pkgName to it.name },
-                        title = stringResource(MR.strings.pref_smart_apostrophe_normalization_exceptions),
-                        subtitle = stringResource(MR.strings.exclude),
-                        enabled = smartApostropheNormalization,
-                        badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                    ),
-                    Preference.PreferenceItem.SwitchPreference(
-                        preference = sourcePreferences.globalSearchEnrichResults,
-                        title = stringResource(MR.strings.pref_global_search_enrich_results),
-                        subtitle = stringResource(MR.strings.pref_global_search_enrich_results_summary),
-                        badge = ImageVector.vectorResource(R.drawable.ic_taihon),
-                    ),
-                ),
-            ),
-        )
+        ) + getTaihonBrowseGroups()
     }
 }
