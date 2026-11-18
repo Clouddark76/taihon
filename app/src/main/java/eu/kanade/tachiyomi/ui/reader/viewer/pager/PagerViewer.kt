@@ -11,23 +11,18 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.viewpager.widget.ViewPager
 import eu.kanade.tachiyomi.R
-import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
 import eu.kanade.tachiyomi.ui.reader.model.InsertPage
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
-import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation.NavigationRegion
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import mihon.app.di.appGraph
 import tachiyomi.core.common.util.system.logcat
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
-import uy.kohesive.injekt.injectLazy
+import taihon.feature.reader.setupTaihonScroller
 import kotlin.math.min
 
 /**
@@ -36,7 +31,9 @@ import kotlin.math.min
 @Suppress("LeakingThis")
 abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
 
-    val downloadManager: DownloadManager by injectLazy()
+    val graph by lazy { activity.appGraph }
+    val downloadManager by lazy { graph.downloadManager }
+    val readerPreferences by lazy { graph.readerPreferences }
 
     private val scope = MainScope()
 
@@ -49,47 +46,10 @@ abstract class PagerViewer(val activity: ReaderActivity) : Viewer {
     /**
      * Configuration used by the pager, like allow taps, scale mode on images, page transitions...
      */
-    val config = PagerConfig(this, scope)
-
-    private var originalScroller: android.widget.Scroller? = null
+    val config = PagerConfig(this, scope, readerPreferences)
 
     init {
-        try {
-            val scrollerField = ViewPager::class.java.getDeclaredField("mScroller")
-            scrollerField.isAccessible = true
-            originalScroller = scrollerField.get(pager) as? android.widget.Scroller
-        } catch (_: Exception) {
-        }
-
-        Injekt.get<ReaderPreferences>().pageTransitionSpeed.changes()
-            .onEach { setNextTransitionSpeed(it) }
-            .launchIn(scope)
-    }
-
-    private fun setNextTransitionSpeed(duration: Int) {
-        try {
-            val scrollerField = ViewPager::class.java.getDeclaredField("mScroller")
-            scrollerField.isAccessible = true
-            val scroller = if (duration > 0) {
-                CustomScroller(activity, duration)
-            } else {
-                originalScroller
-            }
-            scrollerField.set(pager, scroller)
-        } catch (_: Exception) {
-            // ignore
-        }
-    }
-
-    class CustomScroller(context: android.content.Context, private val scrollDuration: Int) :
-        android.widget.Scroller(context, android.view.animation.AccelerateDecelerateInterpolator()) {
-        override fun startScroll(startX: Int, startY: Int, dx: Int, dy: Int, duration: Int) {
-            super.startScroll(startX, startY, dx, dy, scrollDuration)
-        }
-
-        override fun startScroll(startX: Int, startY: Int, dx: Int, dy: Int) {
-            super.startScroll(startX, startY, dx, dy, scrollDuration)
-        }
+        setupTaihonScroller(scope)
     }
 
     /**

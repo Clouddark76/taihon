@@ -3,16 +3,16 @@ package eu.kanade.tachiyomi.ui.browse.migration.search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.CreationExtras
-import androidx.lifecycle.viewmodel.compose.viewModel
 import cafe.adriel.voyager.navigator.LocalNavigator
 import cafe.adriel.voyager.navigator.currentOrThrow
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import eu.kanade.presentation.browse.MigrateSearchScreen
 import eu.kanade.presentation.util.Screen
 import eu.kanade.tachiyomi.ui.browse.source.globalsearch.SearchViewModel
 import eu.kanade.tachiyomi.ui.manga.MangaScreen
 import mihon.feature.migration.dialog.MigrateMangaDialog
 import mihon.feature.migration.list.MigrationListScreen
+import taihon.feature.browse.TaihonSearchHelper
 
 class MigrateSearchScreen(private val mangaId: Long) : Screen() {
 
@@ -20,12 +20,8 @@ class MigrateSearchScreen(private val mangaId: Long) : Screen() {
     override fun Content() {
         val navigator = LocalNavigator.currentOrThrow
 
-        val viewModel = viewModel<MigrateSearchViewModel>(
-            factory = MigrateSearchViewModel.Factory,
-            extras = CreationExtras {
-                set(MigrateSearchViewModel.MANGA_ID_KEY, mangaId)
-            },
-        )
+        val viewModel =
+            assistedMetroViewModel<MigrateSearchViewModel, MigrateSearchViewModel.Factory> { create(mangaId = mangaId) }
         val state by viewModel.state.collectAsState()
 
         MigrateSearchScreen(
@@ -35,7 +31,7 @@ class MigrateSearchScreen(private val mangaId: Long) : Screen() {
             onChangeSearchQuery = viewModel::updateSearchQuery,
             onSearch = { viewModel.search() },
             getManga = { viewModel.getManga(it) },
-            getMangaDetails = { viewModel.getMangaDetails(it) },
+            getMangaDetails = { TaihonSearchHelper.getMangaDetails(it) },
             onChangeSearchFilter = viewModel::setSourceFilter,
             onToggleResults = viewModel::toggleFilterResults,
             onClickSource = { navigator.push(MigrateSourceSearchScreen(state.from!!, it.id, state.searchQuery)) },

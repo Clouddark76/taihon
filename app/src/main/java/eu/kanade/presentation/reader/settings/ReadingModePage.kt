@@ -8,15 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.vectorResource
 import eu.kanade.domain.manga.model.readerOrientation
 import eu.kanade.domain.manga.model.readingMode
-import eu.kanade.tachiyomi.R
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderOrientation
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.setting.ReaderSettingsViewModel
 import eu.kanade.tachiyomi.ui.reader.setting.ReadingMode
+import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuViewer
+import eu.kanade.tachiyomi.ui.reader.viewer.webgpu.WebGpuViewerSettings
 import eu.kanade.tachiyomi.ui.reader.viewer.webtoon.WebtoonViewer
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.CheckboxItem
@@ -25,13 +24,20 @@ import tachiyomi.presentation.core.components.SettingsChipRow
 import tachiyomi.presentation.core.components.SliderItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
+import taihon.feature.ui.components.taihonBadge
 import java.text.NumberFormat
 
 @Composable
 internal fun ColumnScope.ReadingModePage(viewModel: ReaderSettingsViewModel) {
+    val viewer by viewModel.viewerFlow.collectAsState()
+
+    if (viewer is WebGpuViewer) {
+        WebGpuViewerSettings(viewModel)
+        return
+    }
+
     HeadingItem(MR.strings.pref_category_for_this_series)
     val manga by viewModel.mangaFlow.collectAsState()
-
     val readingMode = remember(manga) { ReadingMode.fromPreference(manga?.readingMode?.toInt()) }
     SettingsChipRow(MR.strings.pref_category_reading_mode) {
         ReadingMode.entries.map {
@@ -54,7 +60,6 @@ internal fun ColumnScope.ReadingModePage(viewModel: ReaderSettingsViewModel) {
         }
     }
 
-    val viewer by viewModel.viewerFlow.collectAsState()
     if (viewer is WebtoonViewer) {
         WebtoonViewerSettings(viewModel)
     } else {
@@ -157,14 +162,14 @@ private fun ColumnScope.WebtoonViewerSettings(viewModel: ReaderSettingsViewModel
     val webtoonSidePadding by viewModel.preferences.webtoonSidePadding.collectAsState()
     SliderItem(
         value = webtoonSidePadding,
-        valueRange = ReaderPreferences.let { it.WEBTOON_PADDING_MIN..it.WEBTOON_PADDING_MAX },
+        valueRange = ReaderPreferences.WEBTOON_PADDING_MIN..ReaderPreferences.WEBTOON_PADDING_MAX,
         label = stringResource(MR.strings.pref_webtoon_side_padding),
         valueString = numberFormat.format(webtoonSidePadding / 100f),
         onChange = {
             viewModel.preferences.webtoonSidePadding.set(it)
         },
         pillColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-        badge = ImageVector.vectorResource(R.drawable.ic_taihon),
+        badge = taihonBadge(),
     )
 
     CheckboxItem(
@@ -209,7 +214,7 @@ private fun ColumnScope.WebtoonViewerSettings(viewModel: ReaderSettingsViewModel
 }
 
 @Composable
-private fun ColumnScope.TapZonesItems(
+internal fun TapZonesItems(
     selected: Int,
     onSelect: (Int) -> Unit,
     invertMode: ReaderPreferences.TappingInvertMode,

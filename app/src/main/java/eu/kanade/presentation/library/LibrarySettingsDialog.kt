@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -21,6 +19,8 @@ import eu.kanade.presentation.components.TabbedDialog
 import eu.kanade.presentation.components.TabbedDialogPaddings
 import eu.kanade.tachiyomi.ui.library.LibrarySettingsViewModel
 import eu.kanade.tachiyomi.util.system.isReleaseBuildType
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Refresh
 import tachiyomi.core.common.preference.TriState
 import tachiyomi.domain.category.model.Category
 import tachiyomi.domain.library.model.LibraryDisplayMode
@@ -37,6 +37,7 @@ import tachiyomi.presentation.core.components.SortItem
 import tachiyomi.presentation.core.components.TriStateItem
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.collectAsState
+import taihon.feature.library.ui.TaihonLibrarySettingsHooks
 
 @Composable
 fun LibrarySettingsDialog(
@@ -152,30 +153,7 @@ private fun ColumnScope.FilterPage(
         }
     }
 
-    val sources by viewModel.sourcesFlow.collectAsState()
-    if (sources.isNotEmpty()) {
-        HeadingItem(MR.strings.label_sources)
-        val installedSources = remember(sources) { sources.filterNot { it.isStub } }
-        val hasOrphaned = remember(sources) { sources.any { it.isStub } }
-
-        installedSources.map { source ->
-            val filterSource by viewModel.libraryPreferences.filterSource(source.id).collectAsState()
-            TriStateItem(
-                label = source.visualName,
-                state = filterSource,
-                onClick = { viewModel.toggleSource(source.id) },
-            )
-        }
-
-        if (hasOrphaned) {
-            val filterOrphaned by viewModel.libraryPreferences.filterOrphanedSources.collectAsState()
-            TriStateItem(
-                label = stringResource(MR.strings.ext_obsolete),
-                state = filterOrphaned,
-                onClick = { viewModel.toggleOrphanedSources() },
-            )
-        }
-    }
+    TaihonLibrarySettingsHooks.FilterPageSources(viewModel)
 }
 
 @Composable
@@ -211,7 +189,7 @@ private fun ColumnScope.SortPage(
         if (mode == LibrarySort.Type.Random) {
             BaseSortItem(
                 label = stringResource(titleRes),
-                icon = Icons.Default.Refresh
+                icon = MaterialSymbols.Rounded.Refresh
                     .takeIf { sortingMode == LibrarySort.Type.Random },
                 onClick = {
                     viewModel.setSort(category, mode, LibrarySort.Direction.Ascending)
@@ -302,14 +280,7 @@ private fun ColumnScope.DisplayPage(
         label = stringResource(MR.strings.action_display_local_badge),
         pref = viewModel.libraryPreferences.localBadge,
     )
-    CheckboxItem(
-        label = stringResource(MR.strings.label_sources) + " (${stringResource(MR.strings.ext_installed)})",
-        pref = viewModel.libraryPreferences.sourceInstalledBadge,
-    )
-    CheckboxItem(
-        label = stringResource(MR.strings.label_sources) + " (${stringResource(MR.strings.ext_obsolete)})",
-        pref = viewModel.libraryPreferences.sourceOrphanedBadge,
-    )
+    TaihonLibrarySettingsHooks.DisplayPageSources(viewModel)
     CheckboxItem(
         label = stringResource(MR.strings.action_display_language_badge),
         pref = viewModel.libraryPreferences.languageBadge,

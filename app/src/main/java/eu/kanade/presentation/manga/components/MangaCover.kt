@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.Role
 import coil3.compose.AsyncImage
 import eu.kanade.presentation.util.rememberResourceBitmapPainter
 import eu.kanade.tachiyomi.R
+import taihon.feature.manga.ui.TaihonMangaHooks.rememberCoverModel
 
 enum class MangaCover(val ratio: Float) {
     Square(1f / 1f),
@@ -28,8 +29,10 @@ enum class MangaCover(val ratio: Float) {
         shape: Shape = MaterialTheme.shapes.extraSmall,
         onClick: (() -> Unit)? = null,
     ) {
+        val model = rememberCoverModel(data)
+
         AsyncImage(
-            model = data,
+            model = model,
             placeholder = ColorPainter(CoverPlaceholderColor),
             error = rememberResourceBitmapPainter(id = R.drawable.cover_error),
             contentDescription = contentDescription,

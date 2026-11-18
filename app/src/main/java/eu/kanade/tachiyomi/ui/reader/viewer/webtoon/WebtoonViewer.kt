@@ -11,22 +11,18 @@ import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.WebtoonLayoutManager
-import eu.kanade.tachiyomi.data.download.DownloadManager
 import eu.kanade.tachiyomi.ui.reader.ReaderActivity
 import eu.kanade.tachiyomi.ui.reader.model.ChapterTransition
 import eu.kanade.tachiyomi.ui.reader.model.ReaderPage
 import eu.kanade.tachiyomi.ui.reader.model.ViewerChapters
-import eu.kanade.tachiyomi.ui.reader.setting.ReaderPreferences
 import eu.kanade.tachiyomi.ui.reader.viewer.Viewer
 import eu.kanade.tachiyomi.ui.reader.viewer.ViewerNavigation.NavigationRegion
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import mihon.app.di.appGraph
 import tachiyomi.core.common.util.system.logcat
-import uy.kohesive.injekt.Injekt
-import uy.kohesive.injekt.api.get
-import uy.kohesive.injekt.injectLazy
+import taihon.feature.reader.performTaihonSmoothScroll
+import taihon.feature.reader.setupTaihonWebtoonConfig
 import kotlin.math.max
 import kotlin.math.min
 
@@ -35,7 +31,9 @@ import kotlin.math.min
  */
 class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = true) : Viewer {
 
-    val downloadManager: DownloadManager by injectLazy()
+    val graph by lazy { activity.appGraph }
+    val downloadManager by lazy { graph.downloadManager }
+    val readerPreferences by lazy { graph.readerPreferences }
 
     private val scope = MainScope()
 
@@ -50,11 +48,6 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
     private val frame = WebtoonFrame(activity)
 
     /**
-     * Configuration used by this viewer, like allow taps, or crop image borders.
-     */
-    val config = WebtoonConfig(scope)
-
-    /**
      * Distance to scroll when the user taps on one side of the recycler view.
      */
     private val scrollDistance: Int
@@ -66,7 +59,12 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
     /**
      * Layout manager of the recycler view.
      */
-    private val layoutManager = WebtoonLayoutManager(activity, scrollDistance)
+    private val layoutManager by lazy { WebtoonLayoutManager(activity, scrollDistance) }
+
+    /**
+     * Configuration used by this viewer, like allow taps, or crop image borders.
+     */
+    val config = WebtoonConfig(scope, readerPreferences)
 
     /**
      * Adapter of the recycler view.
@@ -78,17 +76,12 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
      */
     private var currentPage: Any? = null
 
-    private val threshold: Int =
-        Injekt.get<ReaderPreferences>()
-            .readerHideThreshold
-            .get()
-            .threshold
+    private val threshold: Int by lazy { readerPreferences.readerHideThreshold.get().threshold }
 
     init {
-        Injekt.get<ReaderPreferences>().pageTransitionDistance.changes()
-            .onEach { layoutManager.extraLayoutSpace = scrollDistance }
-            .launchIn(scope)
+        setupTaihonWebtoonConfig(scope, layoutManager) { scrollDistance }
 
+        recycler.sidePaddingPercent = config.sidePadding
         recycler.setItemViewCacheSize(RECYCLER_VIEW_CACHE_SIZE)
         recycler.isVisible = false // Don't let the recycler layout yet
         recycler.layoutParams = ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT)
@@ -152,6 +145,7 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
         }
 
         config.imagePropertyChangedListener = {
+            recycler.sidePaddingPercent = config.sidePadding
             refreshAdapter()
         }
 
@@ -227,7 +221,7 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
             val nextItem = adapter.items.getOrNull(adapter.items.size - 1)
             val transitionChapter = (nextItem as? ChapterTransition.Next)?.to ?: (nextItem as?ReaderPage)?.chapter
             if (transitionChapter != null) {
-                logcat { "Requesting to preload chapter ${transitionChapter.chapter.chapter_number}" }
+                logcat { "Requesting to preload chapter ${transitionChapter.chapter.chapterNumber}" }
                 activity.requestPreloadChapter(transitionChapter)
             }
         }
@@ -312,21 +306,7 @@ class WebtoonViewer(val activity: ReaderActivity, val isContinuous: Boolean = tr
     }
 
     private fun smoothScrollBy(distance: Int) {
-        if (config.pageTransitionDuration == 0) {
-            recycler.smoothScrollBy(0, distance)
-            return
-        }
-        android.animation.ValueAnimator.ofInt(0, distance).apply {
-            duration = config.pageTransitionDuration.toLong()
-            interpolator = android.view.animation.DecelerateInterpolator()
-            var lastValue = 0
-            addUpdateListener {
-                val currentValue = it.animatedValue as Int
-                recycler.scrollBy(0, currentValue - lastValue)
-                lastValue = currentValue
-            }
-            start()
-        }
+        performTaihonSmoothScroll(distance)
     }
 
     /**

@@ -22,7 +22,7 @@ class GetApplicationReleaseTest {
     }
 
     @Test
-    fun `When has update but is preview expect new update`() = runTest {
+    fun `When has update but is nightly expect new update`() = runTest {
         val release = Release(
             "r2000",
             "info",
@@ -35,6 +35,8 @@ class GetApplicationReleaseTest {
         val result = getApplicationRelease.await(
             GetApplicationRelease.Arguments(
                 isFoss = false,
+                isNightly = true,
+                commitCount = 1000,
                 versionName = "",
                 repository = "test",
             ),
@@ -59,6 +61,8 @@ class GetApplicationReleaseTest {
         val result = getApplicationRelease.await(
             GetApplicationRelease.Arguments(
                 isFoss = false,
+                isNightly = false,
+                commitCount = 0,
                 versionName = "v1.0.0",
                 repository = "test",
             ),
@@ -83,6 +87,8 @@ class GetApplicationReleaseTest {
         val result = getApplicationRelease.await(
             GetApplicationRelease.Arguments(
                 isFoss = false,
+                isNightly = false,
+                commitCount = 0,
                 versionName = "v2.0.0",
                 repository = "test",
             ),

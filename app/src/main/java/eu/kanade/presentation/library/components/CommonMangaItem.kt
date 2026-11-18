@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButtonDefaults
@@ -39,10 +37,13 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import eu.kanade.presentation.manga.components.MangaCover
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.roundedfilled.PlayArrow
 import tachiyomi.i18n.MR
 import tachiyomi.presentation.core.components.BadgeGroup
 import tachiyomi.presentation.core.i18n.stringResource
 import tachiyomi.presentation.core.util.selectedBackground
+import taihon.feature.library.ui.TaihonLibraryHooks
 import tachiyomi.domain.manga.model.MangaCover as MangaCoverModel
 
 object CommonMangaItemDefaults {
@@ -121,7 +122,7 @@ fun MangaCompactGridItem(
  * Title overlay for [MangaCompactGridItem]
  */
 @Composable
-private fun BoxScope.CoverTextOverlay(
+internal fun BoxScope.CoverTextOverlay(
     title: String,
     onClickContinueReading: (() -> Unit)? = null,
     style: TextStyle = MaterialTheme.typography.titleSmall.copy(
@@ -208,22 +209,8 @@ fun MangaComfortableGridItem(
                 badgesStart = coverBadgeStart,
                 badgesEnd = coverBadgeEnd,
                 content = {
-                    if (coverText != null) {
-                        CoverTextOverlay(
-                            title = coverText,
-                            onClickContinueReading = onClickContinueReading,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.White.copy(alpha = 0.85f),
-                                shadow = Shadow(
-                                    color = Color.Black,
-                                    blurRadius = 4f,
-                                ),
-                                fontSize = 6.sp,
-                            ),
-                            padding = 2.dp,
-                            fillMaxHeight = 0.25f,
-                        )
-                    } else if (onClickContinueReading != null) {
+                    TaihonLibraryHooks.TaihonComfortableGridItemOverlay(this, coverText, onClickContinueReading)
+                    if (coverText == null && onClickContinueReading != null) {
                         ContinueReadingButton(
                             size = ContinueReadingButtonSizeLarge,
                             iconSize = ContinueReadingButtonIconSizeLarge,
@@ -414,7 +401,7 @@ private fun ContinueReadingButton(
             modifier = Modifier.size(size),
         ) {
             Icon(
-                imageVector = Icons.Filled.PlayArrow,
+                imageVector = MaterialSymbols.RoundedFilled.PlayArrow,
                 contentDescription = stringResource(MR.strings.action_resume),
                 modifier = Modifier.size(iconSize),
             )

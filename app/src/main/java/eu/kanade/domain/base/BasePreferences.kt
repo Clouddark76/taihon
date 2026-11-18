@@ -2,14 +2,20 @@ package eu.kanade.domain.base
 
 import android.content.Context
 import dev.icerock.moko.resources.StringResource
-import eu.kanade.tachiyomi.util.system.GLUtil
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.i18n.MR
+import taihon.domain.preferences.TaihonPreferences
 
+@Inject
+@SingleIn(AppScope::class)
 class BasePreferences(
     val context: Context,
     preferenceStore: PreferenceStore,
+    val taihon: TaihonPreferences = TaihonPreferences(preferenceStore),
 ) {
 
     val downloadedOnly: Preference<Boolean> = preferenceStore.getBoolean(
@@ -33,17 +39,17 @@ class BasePreferences(
         PRIVATE(MR.strings.ext_installer_private, false),
     }
 
-    val displayProfile: Preference<String> = preferenceStore.getString("pref_display_profile_key", "")
+    val highQualityRenderer: Preference<Boolean> = preferenceStore.getBoolean("pref_high_quality_renderer_key", false)
 
-    val hardwareBitmapThreshold: Preference<Int> = preferenceStore.getInt(
-        "pref_hardware_bitmap_threshold",
-        GLUtil.SAFE_TEXTURE_LIMIT,
-    )
+    val installationId: Preference<String> = preferenceStore.getString(Preference.appStateKey("installation_id"), "")
 
-    val alwaysDecodeLongStripWithSSIV: Preference<Boolean> = preferenceStore.getBoolean(
-        "pref_always_decode_long_strip_with_ssiv",
+    val donationCampaignShown: Preference<Boolean> = preferenceStore.getBoolean(
+        Preference.appStateKey("donation_campaign_shown"),
         false,
     )
 
-    val installationId: Preference<String> = preferenceStore.getString(Preference.appStateKey("installation_id"), "")
+    val skippedAppUpdate: Preference<String> = preferenceStore.getString(
+        Preference.appStateKey("skipped_app_update"),
+        "",
+    )
 }

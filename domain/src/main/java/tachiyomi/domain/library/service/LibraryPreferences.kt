@@ -1,5 +1,8 @@
 package tachiyomi.domain.library.service
 
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import tachiyomi.core.common.preference.Preference
 import tachiyomi.core.common.preference.PreferenceStore
 import tachiyomi.core.common.preference.TriState
@@ -7,9 +10,13 @@ import tachiyomi.core.common.preference.getEnum
 import tachiyomi.domain.library.model.LibraryDisplayMode
 import tachiyomi.domain.library.model.LibrarySort
 import tachiyomi.domain.manga.model.Manga
+import taihon.domain.preferences.TaihonPreferences
 
+@Inject
+@SingleIn(AppScope::class)
 class LibraryPreferences(
     private val preferenceStore: PreferenceStore,
+    val taihon: TaihonPreferences = TaihonPreferences(preferenceStore),
 ) {
 
     val displayMode: Preference<LibraryDisplayMode> = preferenceStore.getObjectFromString(
@@ -100,16 +107,6 @@ class LibraryPreferences(
         TriState.DISABLED,
     )
 
-    fun filterSource(id: Long): Preference<TriState> = preferenceStore.getEnum(
-        "pref_filter_library_source_${id}_v2",
-        TriState.DISABLED,
-    )
-
-    val filterOrphanedSources: Preference<TriState> = preferenceStore.getEnum(
-        "pref_filter_library_orphaned_sources_v2",
-        TriState.DISABLED,
-    )
-
     // endregion
 
     // region Badges
@@ -121,10 +118,6 @@ class LibraryPreferences(
     val localBadge: Preference<Boolean> = preferenceStore.getBoolean("display_local_badge", true)
 
     val languageBadge: Preference<Boolean> = preferenceStore.getBoolean("display_language_badge", false)
-
-    val sourceInstalledBadge: Preference<Boolean> = preferenceStore.getBoolean("display_source_installed_badge", false)
-
-    val sourceOrphanedBadge: Preference<Boolean> = preferenceStore.getBoolean("display_source_orphaned_badge", true)
 
     val newShowUpdatesCount: Preference<Boolean> = preferenceStore.getBoolean("library_show_updates_count", true)
     val newUpdatesCount: Preference<Int> = preferenceStore.getInt(
@@ -228,10 +221,9 @@ class LibraryPreferences(
         "disallow_non_ascii_filenames",
         false,
     )
-
-    val resumeLastSeenPage: Preference<Boolean> = preferenceStore.getBoolean(
-        "pref_resume_last_seen_page",
-        true,
+    val enableChapterNameHash: Preference<Boolean> = preferenceStore.getBoolean(
+        "pref_enable_chapter_name_hash",
+        false,
     )
 
     // endregion

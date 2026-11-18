@@ -10,7 +10,10 @@ import tachiyomi.core.common.preference.Preference
 /**
  * Common configuration for all viewers.
  */
-abstract class ViewerConfig(readerPreferences: ReaderPreferences, private val scope: CoroutineScope) {
+abstract class ViewerConfig(
+    readerPreferences: ReaderPreferences,
+    private val scope: CoroutineScope,
+) {
 
     var imagePropertyChangedListener: (() -> Unit)? = null
 
@@ -54,10 +57,10 @@ abstract class ViewerConfig(readerPreferences: ReaderPreferences, private val sc
         readerPreferences.pageTransitions
             .register({ usePageTransitions = it })
 
-        readerPreferences.pageTransitionDistance
+        readerPreferences.taihon.pageTransitionDistance
             .register({ pageTransitionDistance = it })
 
-        readerPreferences.pageTransitionSpeed
+        readerPreferences.taihon.pageTransitionSpeed
             .register({ pageTransitionDuration = it })
 
         readerPreferences.doubleTapAnimSpeed

@@ -6,9 +6,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,6 +21,9 @@ import eu.kanade.presentation.browse.components.BaseSourceItem
 import eu.kanade.tachiyomi.ui.browse.source.SourcesViewModel
 import eu.kanade.tachiyomi.ui.browse.source.browse.BrowseSourceViewModel.Listing
 import eu.kanade.tachiyomi.util.system.LocaleHelper
+import mihon.icons.materialsymbols.MaterialSymbols
+import mihon.icons.materialsymbols.rounded.Keep
+import mihon.icons.materialsymbols.roundedfilled.Keep
 import tachiyomi.domain.source.model.Pin
 import tachiyomi.domain.source.model.Source
 import tachiyomi.i18n.MR
@@ -36,6 +36,7 @@ import tachiyomi.presentation.core.screens.EmptyScreen
 import tachiyomi.presentation.core.screens.LoadingScreen
 import tachiyomi.presentation.core.theme.header
 import tachiyomi.presentation.core.util.plus
+import taihon.feature.browse.ui.TaihonSourcesHooks
 
 @Composable
 fun SourcesScreen(
@@ -142,7 +143,7 @@ private fun SourcePinButton(
     isPinned: Boolean,
     onClick: () -> Unit,
 ) {
-    val icon = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin
+    val icon = if (isPinned) MaterialSymbols.RoundedFilled.Keep else MaterialSymbols.Rounded.Keep
     val tint = if (isPinned) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -175,15 +176,8 @@ fun SourceOptionsDialog(
         },
         text = {
             Column {
-                onClickSettings?.let {
-                    Text(
-                        text = stringResource(MR.strings.action_settings),
-                        modifier = Modifier
-                            .clickable(onClick = it)
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                    )
-                }
+                TaihonSourcesHooks.SourceOptionsButtons(onClickSettings)
+
                 val textId = if (Pin.Pinned in source.pin) MR.strings.action_unpin else MR.strings.action_pin
                 Text(
                     text = stringResource(textId),
@@ -199,15 +193,8 @@ fun SourceOptionsDialog(
                         .fillMaxWidth()
                         .padding(vertical = 16.dp),
                 )
-                onClickUninstall?.let {
-                    Text(
-                        text = stringResource(MR.strings.ext_uninstall),
-                        modifier = Modifier
-                            .clickable(onClick = it)
-                            .fillMaxWidth()
-                            .padding(vertical = 16.dp),
-                    )
-                }
+
+                TaihonSourcesHooks.SourceOptionsButtons(onClickUninstall = onClickUninstall)
             }
         },
         onDismissRequest = onDismiss,
