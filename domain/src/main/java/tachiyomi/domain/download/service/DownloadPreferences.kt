@@ -54,7 +54,7 @@ class DownloadPreferences(
         false,
     )
 
-    val parallelSourceLimit: Preference<Int> = preferenceStore.getInt("download_parallel_source_limit", 5)
+    val parallelSourceLimit: Preference<Int> = preferenceStore.getInt("download_parallel_source_limit", 10)
     val parallelPageLimit: Preference<Int> = preferenceStore.getInt("download_parallel_page_limit", 5)
 
     companion object {
