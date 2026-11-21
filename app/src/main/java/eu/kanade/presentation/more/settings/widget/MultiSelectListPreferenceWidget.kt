@@ -54,7 +54,7 @@ fun <T> MultiSelectListPreferenceWidget(
             text = {
                 LazyColumn {
                     entries.forEach { (key, label) ->
-                        item(key = key) {
+                        item {
                             LabeledCheckbox(
                                 label = label,
                                 checked = key in selected,
